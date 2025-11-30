@@ -14,12 +14,17 @@ public class Constants {
 
     public static PathConstraints pathConstraints = new PathConstraints(0.99, 100, 1, 1);
 
-    // Pinpoint localizer - add this first, then configure in Robot Configuration
+    // Pinpoint localizer - configured for I2C bus 1
+    // Next steps:
+    // 1. Configure "pinpoint" device in Robot Configuration (I2C bus 1) ✓
+    // 2. Measure and set forwardPodY and strafePodX offsets
+    // 3. Test encoder directions (forward pod should increase when moving forward, strafe pod when moving left)
+    // 4. Run LocalizationTest OpMode to verify tracking
     public static PinpointConstants localizerConstants = new PinpointConstants()
-            .forwardPodY(0)  // We'll measure this after testing
-            .strafePodX(0)   // We'll measure this after testing
+            .forwardPodY(0)  // Measure: forward/backward offset of strafe (Y) pod from tracking point (inches)
+            .strafePodX(0)   // Measure: left/right offset of forward (X) pod from tracking point (inches)
             .distanceUnit(DistanceUnit.INCH)
-            .hardwareMapName("pinpoint")  // This name must match what you configure in Robot Configuration
+            .hardwareMapName("pinpoint")  // Matches Robot Configuration name
             .encoderResolution(GoBildaPinpointDriver.GoBildaOdometryPods.goBILDA_4_BAR_POD)
             .forwardEncoderDirection(GoBildaPinpointDriver.EncoderDirection.FORWARD)
             .strafeEncoderDirection(GoBildaPinpointDriver.EncoderDirection.FORWARD);
