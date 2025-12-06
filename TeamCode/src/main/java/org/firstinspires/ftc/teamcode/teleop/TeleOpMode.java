@@ -20,7 +20,7 @@ public class TeleOpMode extends OpMode
     private PIDController rightLauncherPid = new PIDController(0.06, 0, 0);
 
     // Launcher target velocity
-    private final double LAUNCHER_TARGET_VELOCITY = 1500; // Adjust this value
+    private final double LAUNCHER_TARGET_VELOCITY = 1200; // Adjust this value
     private boolean launchersOn = false;
 
     // Hardware
@@ -93,9 +93,11 @@ public class TeleOpMode extends OpMode
 
         // Launcher Motors with PID
         if (gamepad2.left_bumper) {
+            telemetry.addData("Status", "Launchers On");
             launchersOn = true;
         }
         if (gamepad2.right_bumper) {
+            telemetry.addData("Status", "Launchers Off");
             launchersOn = false;
         }
 
@@ -103,10 +105,10 @@ public class TeleOpMode extends OpMode
             double leftPower = leftLauncherPid.calculate(LAUNCHER_TARGET_VELOCITY, leftLauncher.getVelocity());
             double rightPower = rightLauncherPid.calculate(LAUNCHER_TARGET_VELOCITY, rightLauncher.getVelocity());
             leftLauncher.setPower(leftPower);
-            rightLauncher.setPower(rightPower);
+//            rightLauncher.setPower(rightPower);
         } else {
             leftLauncher.setPower(0.0);
-            rightLauncher.setPower(0.0);
+//            rightLauncher.setPower(0.0);
             leftLauncherPid.reset();
             rightLauncherPid.reset();
         }
@@ -114,6 +116,12 @@ public class TeleOpMode extends OpMode
         // Intake
         if (gamepad2.y) {
             intake.setPower(-0.8);
+        } else {
+            intake.setPower(0.0);
+        }
+
+        if (gamepad2.x) {
+            intake.setPower(0.8);
         } else {
             intake.setPower(0.0);
         }
