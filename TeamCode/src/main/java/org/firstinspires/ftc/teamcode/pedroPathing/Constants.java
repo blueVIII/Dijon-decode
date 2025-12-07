@@ -3,37 +3,56 @@ package org.firstinspires.ftc.teamcode.pedroPathing;
 import com.pedropathing.follower.Follower;
 import com.pedropathing.follower.FollowerConstants;
 import com.pedropathing.ftc.FollowerBuilder;
-import com.pedropathing.ftc.localization.constants.DriveEncoderConstants;
-import com.pedropathing.ftc.localization.constants.PinpointConstants;
+import com.pedropathing.ftc.drivetrains.MecanumConstants;
 import com.pedropathing.paths.PathConstraints;
-import com.qualcomm.hardware.gobilda.GoBildaPinpointDriver;
+
+import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.hardware.HardwareMap;
+import com.pedropathing.ftc.localization.constants.PinpointConstants;
+import com.qualcomm.hardware.gobilda.GoBildaPinpointDriver;
 import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
 
 public class Constants {
-    public static FollowerConstants followerConstants = new FollowerConstants();
+    public static FollowerConstants followerConstants = new FollowerConstants()
+            .mass(5);   // TODO: replace with your robot's mass in kilograms
 
-    public static PathConstraints pathConstraints = new PathConstraints(0.99, 100, 1, 1);
 
-    // Pinpoint localizer - configured for I2C bus 1
-    // Next steps:
-    // 1. Configure "pinpoint" device in Robot Configuration (I2C bus 1) ✓
-    // 2. Measure and set forwardPodY and strafePodX offsets
-    // 3. Test encoder directions (forward pod should increase when moving forward, strafe pod when moving left)
-    // 4. Run LocalizationTest OpMode to verify tracking
-    public static PinpointConstants localizerConstants = new PinpointConstants()
-            .forwardPodY(0)  // Measure: forward/backward offset of strafe (Y) pod from tracking point (inches)
-            .strafePodX(0)   // Measure: left/right offset of forward (X) pod from tracking point (inches)
-            .distanceUnit(DistanceUnit.INCH)
-            .hardwareMapName("pinpoint")  // Matches Robot Configuration name
-            .encoderResolution(GoBildaPinpointDriver.GoBildaOdometryPods.goBILDA_4_BAR_POD)
-            .forwardEncoderDirection(GoBildaPinpointDriver.EncoderDirection.FORWARD)
-            .strafeEncoderDirection(GoBildaPinpointDriver.EncoderDirection.FORWARD);
+    public static PathConstraints pathConstraints =
+            new PathConstraints(0.99, 100, 1, 1);
+
+
+    public static MecanumConstants driveConstants = new MecanumConstants()
+            .maxPower(1)   // Do not exceed 1.0
+
+            .rightFrontMotorName("rightFront")
+            .rightRearMotorName("rightBack")
+            .leftRearMotorName("leftBack")
+            .leftFrontMotorName("leftFront")
+
+            .leftFrontMotorDirection(DcMotorSimple.Direction.REVERSE)
+            .leftRearMotorDirection(DcMotorSimple.Direction.REVERSE)
+            .rightFrontMotorDirection(DcMotorSimple.Direction.FORWARD)
+            .rightRearMotorDirection(DcMotorSimple.Direction.FORWARD);
+
 
     public static Follower createFollower(HardwareMap hardwareMap) {
         return new FollowerBuilder(followerConstants, hardwareMap)
-                .pinpointLocalizer(localizerConstants)  // This connects Pinpoint to Pedro Pathing
                 .pathConstraints(pathConstraints)
+                .mecanumDrivetrain(driveConstants)
+                .pinpointLocalizer(localizerConstants)   // ← add this line
+
                 .build();
     }
+    // -------------------------
+    // 3. LOCALIZER CONSTANTS (Pinpoint)
+    // -------------------------
+    public static PinpointConstants localizerConstants = new PinpointConstants()
+            // TODO: set these to your actual odometry offsets (in inches)
+            .forwardPodY(-3.34375)                   // distance of forward pod from robot center (Y)
+            .strafePodX(-7.75)                   // distance of strafe pod from robot center (X)
+            .distanceUnit(DistanceUnit.INCH)
+            .hardwareMapName("pinpoint")       // <-- change to your I2C device name
+            .encoderResolution(GoBildaPinpointDriver.GoBildaOdometryPods.goBILDA_4_BAR_POD)
+            .forwardEncoderDirection(GoBildaPinpointDriver.EncoderDirection.FORWARD)
+            .strafeEncoderDirection(GoBildaPinpointDriver.EncoderDirection.FORWARD);
 }
