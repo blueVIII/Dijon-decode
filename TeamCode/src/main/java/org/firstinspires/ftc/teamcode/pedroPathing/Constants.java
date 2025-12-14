@@ -11,14 +11,20 @@ import com.qualcomm.robotcore.hardware.HardwareMap;
 import com.pedropathing.ftc.localization.constants.PinpointConstants;
 import com.qualcomm.hardware.gobilda.GoBildaPinpointDriver;
 import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
+import com.pedropathing.control.PIDFCoefficients;
+
+
 
 public class Constants {
     public static FollowerConstants followerConstants = new FollowerConstants()
-            .mass(5);   // TODO: replace with your robot's mass in kilograms
+            .mass(13.6)   // TODO: replace with your robot's mass in kilograms
+            .forwardZeroPowerAcceleration(-38.6574)
+            .lateralZeroPowerAcceleration(-71.4462)
+            .headingPIDFCoefficients(new PIDFCoefficients(0.1, 0, 0.01, 0));
 
 
     public static PathConstraints pathConstraints =
-            new PathConstraints(0.99, 100, 1, 1);
+            new PathConstraints(0.99, 100, 1.5, 1);
 
 
     public static MecanumConstants driveConstants = new MecanumConstants()
@@ -28,11 +34,14 @@ public class Constants {
             .rightRearMotorName("rightBack")
             .leftRearMotorName("leftBack")
             .leftFrontMotorName("leftFront")
+            .xVelocity(63.2909)
+            .yVelocity(51.0542)
 
             .leftFrontMotorDirection(DcMotorSimple.Direction.REVERSE)
             .leftRearMotorDirection(DcMotorSimple.Direction.REVERSE)
             .rightFrontMotorDirection(DcMotorSimple.Direction.FORWARD)
             .rightRearMotorDirection(DcMotorSimple.Direction.FORWARD);
+
 
 
     public static Follower createFollower(HardwareMap hardwareMap) {
@@ -48,8 +57,8 @@ public class Constants {
     // -------------------------
     public static PinpointConstants localizerConstants = new PinpointConstants()
             // TODO: set these to your actual odometry offsets (in inches)
-            .forwardPodY(-3.34375)                   // distance of forward pod from robot center (Y)
-            .strafePodX(-7.75)                   // distance of strafe pod from robot center (X)
+            .forwardPodY(-3.30709)                   // distance of forward pod from robot center (Y)
+            .strafePodX(-6.61417)                   // distance of strafe pod from robot center (X)
             .distanceUnit(DistanceUnit.INCH)
             .hardwareMapName("pinpoint")       // <-- change to your I2C device name
             .encoderResolution(GoBildaPinpointDriver.GoBildaOdometryPods.goBILDA_4_BAR_POD)

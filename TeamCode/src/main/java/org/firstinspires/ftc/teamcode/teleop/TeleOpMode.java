@@ -116,11 +116,7 @@ public class TeleOpMode extends OpMode
         // Intake
         if (gamepad2.y) {
             intake.setPower(-0.8);
-        } else {
-            intake.setPower(0.0);
-        }
-
-        if (gamepad2.x) {
+        } else if (gamepad2.x){
             intake.setPower(0.8);
         } else {
             intake.setPower(0.0);
@@ -132,10 +128,6 @@ public class TeleOpMode extends OpMode
 
         if (gamepad2.b) {
             intakeSelect.setPosition(0.63);
-        }
-
-        if (gamepad1.a) {
-            intake.setPower(0.8);
         }
 
         telemetry.addData("Status", "Run Time: " + runtime.toString());
