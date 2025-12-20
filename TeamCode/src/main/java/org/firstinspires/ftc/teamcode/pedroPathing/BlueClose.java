@@ -16,6 +16,14 @@ import com.qualcomm.robotcore.util.ElapsedTime;
 import org.firstinspires.ftc.teamcode.teleop.DriveTrain;
 import org.firstinspires.ftc.teamcode.teleop.PIDController;
 
+import org.firstinspires.ftc.robotcore.external.hardware.camera.WebcamName;
+import org.firstinspires.ftc.vision.VisionPortal;
+import org.firstinspires.ftc.vision.apriltag.AprilTagDetection;
+import org.firstinspires.ftc.vision.apriltag.AprilTagProcessor;
+
+import java.util.List;
+
+
 @Autonomous(name = "Blue Close Auto", group = "Examples")
 public class BlueClose extends OpMode {
 
@@ -23,6 +31,8 @@ public class BlueClose extends OpMode {
 
     // Drivetrain
     private DriveTrain driveTrain;
+
+    private Paths paths;
 
     // PID Controllers for the launchers
     private PIDController leftLauncherPid = new PIDController(0.06, 0, 0);
@@ -47,7 +57,18 @@ public class BlueClose extends OpMode {
 
     private int pathState;
 
-    private final Pose startPose = new Pose(134.5, 134.5, Math.toRadians(225)); // Start Pose of our robot.
+    // AprilTag
+    private VisionPortal visionPortal;
+    private AprilTagProcessor aprilTag;
+
+    // Dynamic launcher target
+    private double launcherTargetVelocity = 1200; // fallback default
+
+    // Which tag are we aiming at?
+    private static final int GOAL_TAG_ID = 24; // CHANGE to your actual goal tag ID
+
+
+    private final Pose startPose = new Pose(122.5, 128.5, Math.toRadians(230)); // Start Pose of our robot.
     private final Pose scorePose = new Pose(96, 96, Math.toRadians(45)); // Scoring Pose of our robot. It is facing the goal at a 135 degree angle.
 //    private final Pose pickup1Pose = new Pose(37, 121, Math.toRadians(0)); // Highest (First Set) of Artifacts from the Spike Mark.
 //    private final Pose pickup2Pose = new Pose(43, 130, Math.toRadians(0)); // Middle (Second Set) of Artifacts from the Spike Mark.
@@ -76,13 +97,12 @@ public class BlueClose extends OpMode {
     public void autonomousPathUpdate() {
         switch (pathState) {
 
-            // Drive to score
+            /* ================= PRELOAD ================= */
             case 0:
-                follower.followPath(scorePreload);
+                follower.followPath(paths.Shootpreload);
                 setPathState(1);
                 break;
 
-            // Wait for drive to finish
             case 1:
                 if (!follower.isBusy()) {
                     actionTimer.resetTimer();
@@ -90,7 +110,6 @@ public class BlueClose extends OpMode {
                 }
                 break;
 
-            // Spin up launcher
             case 2:
                 spinUpLaunchers();
                 if (launchersAtSpeed(50)) {
@@ -99,26 +118,170 @@ public class BlueClose extends OpMode {
                 }
                 break;
 
-            // Feed ball
             case 3:
-                spinUpLaunchers(); // keep velocity up
+                spinUpLaunchers();
                 feedOn();
-
                 if (actionTimer.getElapsedTimeSeconds() > 0.4) {
                     feedOff();
-                    actionTimer.resetTimer();
                     setPathState(4);
                 }
                 break;
 
-            // Stop launcher (or pause)
+            /* ================= LOAD 1 ================= */
             case 4:
                 stopLaunchers();
-                setPathState(-1); // auto done
+                setIntakeMode();
+                intakeOn();
+                follower.followPath(paths.AlligntoLoadup1stset);
+                setPathState(5);
+                break;
+
+            case 5:
+                if (!follower.isBusy()) {
+                    follower.followPath(paths.Loadup1stset);
+                    setPathState(6);
+                }
+                break;
+
+            case 6:
+                if (!follower.isBusy()) {
+                    intakeOff();
+                    setShootMode();
+                    follower.followPath(paths.Shoot1stset);
+                    setPathState(7);
+                }
+                break;
+
+            case 7:
+                if (!follower.isBusy()) {
+                    actionTimer.resetTimer();
+                    setPathState(8);
+                }
+                break;
+
+            case 8:
+                spinUpLaunchers();
+                if (launchersAtSpeed(50)) {
+                    actionTimer.resetTimer();
+                    setPathState(9);
+                }
+                break;
+
+            case 9:
+                spinUpLaunchers();
+                feedOn();
+                if (actionTimer.getElapsedTimeSeconds() > 0.4) {
+                    feedOff();
+                    setPathState(10);
+                }
+                break;
+
+            /* ================= LOAD 2 ================= */
+            case 10:
+                stopLaunchers();
+                setIntakeMode();
+                intakeOn();
+                follower.followPath(paths.AlligntoLoadup2ndset);
+                setPathState(11);
+                break;
+
+            case 11:
+                if (!follower.isBusy()) {
+                    follower.followPath(paths.Loadup2ndset);
+                    setPathState(12);
+                }
+                break;
+
+            case 12:
+                if (!follower.isBusy()) {
+                    intakeOff();
+                    setShootMode();
+                    follower.followPath(paths.Shoot2ndSet);
+                    setPathState(13);
+                }
+                break;
+
+            case 13:
+                if (!follower.isBusy()) {
+                    actionTimer.resetTimer();
+                    setPathState(14);
+                }
+                break;
+
+            case 14:
+                spinUpLaunchers();
+                if (launchersAtSpeed(50)) {
+                    actionTimer.resetTimer();
+                    setPathState(15);
+                }
+                break;
+
+            case 15:
+                spinUpLaunchers();
+                feedOn();
+                if (actionTimer.getElapsedTimeSeconds() > 0.4) {
+                    feedOff();
+                    setPathState(16);
+                }
+                break;
+
+            /* ================= LOAD 3 ================= */
+            case 16:
+                stopLaunchers();
+                setIntakeMode();
+                intakeOn();
+                follower.followPath(paths.Alligntoloadup3rdset);
+                setPathState(17);
+                break;
+
+            case 17:
+                if (!follower.isBusy()) {
+                    follower.followPath(paths.Loadup3rdset);
+                    setPathState(18);
+                }
+                break;
+
+            case 18:
+                if (!follower.isBusy()) {
+                    intakeOff();
+                    setShootMode();
+                    follower.followPath(paths.Shoot3rdset);
+                    setPathState(19);
+                }
+                break;
+
+            case 19:
+                if (!follower.isBusy()) {
+                    actionTimer.resetTimer();
+                    setPathState(20);
+                }
+                break;
+
+            case 20:
+                spinUpLaunchers();
+                if (launchersAtSpeed(50)) {
+                    actionTimer.resetTimer();
+                    setPathState(21);
+                }
+                break;
+
+            case 21:
+                spinUpLaunchers();
+                feedOn();
+                if (actionTimer.getElapsedTimeSeconds() > 0.4) {
+                    feedOff();
+                    setPathState(22);
+                }
+                break;
+
+            /* ================= END ================= */
+            case 22:
+                stopLaunchers();
+                intakeOff();
+                setPathState(-1);
                 break;
         }
     }
-
 
 
     /** These change the states of the paths and actions. It will also reset the timers of the individual switches **/
@@ -154,7 +317,7 @@ public class BlueClose extends OpMode {
 
 
         follower = Constants.createFollower(hardwareMap);
-        buildPaths();
+        paths = new Paths(follower);
         follower.setStartingPose(startPose);
 
         leftLauncher = hardwareMap.get(DcMotorEx.class, "leftLauncher");
@@ -172,6 +335,9 @@ public class BlueClose extends OpMode {
         rightLauncherPid = new PIDController(0.06, 0, 0);
 
         actionTimer = new Timer();
+
+        intake = hardwareMap.get(DcMotor.class, "intake");
+        intakeSelect = hardwareMap.get(Servo.class, "intakeSelect");
 
     }
 
@@ -221,6 +387,28 @@ public class BlueClose extends OpMode {
         rightLauncher.setPower(0);
         leftLauncherPid.reset();
         rightLauncherPid.reset();
+    }
+
+    /* ================= INTAKE HELPERS ================= */
+
+    private void intakeOn() {
+        intake.setPower(-0.8); // same as TeleOp intake-in
+    }
+
+    private void intakeOff() {
+        intake.setPower(0.0);
+    }
+
+    private void intakeReverse() {
+        intake.setPower(0.8);
+    }
+
+    private void setIntakeMode() {
+        intakeSelect.setPosition(0.47); // TeleOp intake position
+    }
+
+    private void setShootMode() {
+        intakeSelect.setPosition(0.63); // TeleOp shoot position
     }
 
 
