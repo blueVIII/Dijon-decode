@@ -14,6 +14,8 @@ public class Paths {
     public PathChain Shootpreload;
     public PathChain AlligntoLoadup1stset;
     public PathChain Loadup1stset;
+    public PathChain Loadup1stsetBackup;
+    public PathChain Loadup1stset3rdBall;
     public PathChain Shoot1stset;
     public PathChain AlligntoLoadup2ndset;
     public PathChain Loadup2ndset;
@@ -26,8 +28,8 @@ public class Paths {
 
         // ================= PRELOAD =================
         Shootpreload = follower.pathBuilder()
-                .addPath(new BezierLine(new Pose(116.549, 130.431), new Pose(75.765, 92.471)))
-                .setLinearHeadingInterpolation(Math.toRadians(216.3), Math.toRadians(36.3))
+                .addPath(new BezierLine(new Pose(116.549, 130.431), new Pose(107.765, 92.471)))
+                .setLinearHeadingInterpolation(Math.toRadians(216.3), Math.toRadians(45))
                 .setVelocityConstraint(FAST_TRAVEL)
                 .build();
 
@@ -39,10 +41,21 @@ public class Paths {
                 .build();
 
         Loadup1stset = follower.pathBuilder()
-                .addPath(new BezierLine(new Pose(101.176, 83.765), new Pose(121.882, 83.294)))
+                .addPath(new BezierLine(new Pose(101.176, 83.765), new Pose(130.882, 83.294)))
                 .setLinearHeadingInterpolation(0, 0)
                 .setVelocityConstraint(SLOW_INTAKE)
                 .build();
+        Loadup1stsetBackup = follower.pathBuilder()
+                .addPath(new BezierLine(new Pose(130.882, 83.294), new Pose(128.882, 83.294)))
+                .setLinearHeadingInterpolation(0, 0)
+                .setVelocityConstraint(SLOW_INTAKE)
+                .build();
+        Loadup1stset3rdBall = follower.pathBuilder()
+                .addPath(new BezierLine(new Pose(128.882, 83.294), new Pose(135.882, 83.294)))
+                .setLinearHeadingInterpolation(0, 0)
+                .setVelocityConstraint(SLOW_INTAKE)
+                .build();
+
 
         Shoot1stset = follower.pathBuilder()
                 .addPath(new BezierLine(new Pose(121.882, 83.294), new Pose(75.765, 92.471)))
