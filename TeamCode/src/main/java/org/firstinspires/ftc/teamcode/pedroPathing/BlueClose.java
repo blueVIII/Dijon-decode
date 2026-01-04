@@ -1,9 +1,8 @@
-package org.firstinspires.ftc.teamcode.pedroPathing;
+package org.firstinspires.ftc.teamcode.autonomous;
 import com.pedropathing.follower.Follower;
 import com.pedropathing.geometry.BezierLine;
 import com.pedropathing.geometry.Pose;
 import com.pedropathing.paths.Path;
-import com.pedropathing.paths.PathChain;
 import com.pedropathing.util.Timer;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 import  com.qualcomm.robotcore.eventloop.opmode.OpMode;
@@ -13,19 +12,17 @@ import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.util.ElapsedTime;
 
+import org.firstinspires.ftc.teamcode.pedroPathing.Constants;
+import org.firstinspires.ftc.teamcode.pedroPathing.Paths;
 import org.firstinspires.ftc.teamcode.teleop.DriveTrain;
 import org.firstinspires.ftc.teamcode.teleop.PIDController;
 
-import org.firstinspires.ftc.robotcore.external.hardware.camera.WebcamName;
 import org.firstinspires.ftc.vision.VisionPortal;
-import org.firstinspires.ftc.vision.apriltag.AprilTagDetection;
 import org.firstinspires.ftc.vision.apriltag.AprilTagProcessor;
 
-import java.util.List;
 
-
-@Autonomous(name = "Blue Close Auto", group = "Examples")
-public class BlueClose extends OpMode {
+@Autonomous(name = "Red Far Auto", group = "Examples")
+public class RedFar extends OpMode {
 
     private ElapsedTime runtime = new ElapsedTime();
 
@@ -56,7 +53,24 @@ public class BlueClose extends OpMode {
     private Timer pathTimer, actionTimer, opmodeTimer;
 
     private int pathState;
+    private enum FeedSide { LEFT, RIGHT }
 
+    private final FeedSide[] preloadSequence = {
+            FeedSide.LEFT,   // left chamber ball #1
+            FeedSide.RIGHT,  // right chamber only ball
+            FeedSide.LEFT    // left chamber ball #2
+    };
+
+    private int preloadShotIndex = 0;
+    private int preloadPhase = 0; // 0 = feeding, 1 = recovering
+    private static final double FEED_TIME = 0.6;     // tune
+    private static final double RECOVER_TIME = 0.15;  // tune
+    private static final double MAX_RECOVER_TIME = 0.8; // tune
+    private static final double INTAKE_ASSIST_POWER = -0.9; // tune this
+    private static final double INTAKE_LEAD_TIME = 0.12; // tune (0.08–0.20)
+    private static final double INTAKE_DRIVE_SCALE = 0.1; // 25% speed
+    private static final double LOAD1_SERVO_SWITCH_TIME = 5.5; // tune (seconds)
+    private boolean load1ServoSwitched = false;
     // AprilTag
     private VisionPortal visionPortal;
     private AprilTagProcessor aprilTag;
@@ -69,7 +83,7 @@ public class BlueClose extends OpMode {
 
 
     private final Pose startPose = new Pose(122.5, 128.5, Math.toRadians(230)); // Start Pose of our robot.
-    private final Pose scorePose = new Pose(96, 96, Math.toRadians(45)); // Scoring Pose of our robot. It is facing the goal at a 135 degree angle.
+    private final Pose scorePose = new Pose(108, 108, Math.toRadians(45)); // Scoring Pose of our robot. It is facing the goal at a 135 degree angle.
 //    private final Pose pickup1Pose = new Pose(37, 121, Math.toRadians(0)); // Highest (First Set) of Artifacts from the Spike Mark.
 //    private final Pose pickup2Pose = new Pose(43, 130, Math.toRadians(0)); // Middle (Second Set) of Artifacts from the Spike Mark.
 //    private final Pose pickup3Pose = new Pose(49, 135, Math.toRadians(0)); // Lowest (Third Set) of Artifacts from the Spike Mark.
@@ -99,12 +113,22 @@ public class BlueClose extends OpMode {
 
             /* ================= PRELOAD ================= */
             case 0:
+                spinUpLaunchers(); // start spinning immediately
                 follower.followPath(paths.Shootpreload);
                 setPathState(1);
                 break;
 
             case 1:
-                if (!follower.isBusy()) {
+                spinUpLaunchers();
+
+                if (!follower.isBusy() && launchersAtSpeed(50)) {
+                    // HARD RESET anything that could be lingering
+                    feedAllOff();
+                    intakeOff();          // ensures intake motor is NOT running on shot 1
+                    setShootMode();       // ensures your diverter/selector is in shoot position
+
+                    preloadShotIndex = 0;
+                    preloadPhase = 0;
                     actionTimer.resetTimer();
                     setPathState(2);
                 }
@@ -112,41 +136,111 @@ public class BlueClose extends OpMode {
 
             case 2:
                 spinUpLaunchers();
-                if (launchersAtSpeed(50)) {
-                    actionTimer.resetTimer();
-                    setPathState(3);
-                }
-                break;
 
-            case 3:
-                spinUpLaunchers();
-                feedOn();
-                if (actionTimer.getElapsedTimeSeconds() > 0.4) {
-                    feedOff();
+                // done with all 3 shots
+                if (preloadShotIndex >= preloadSequence.length) {
+                    intakeAssistOff();
+                    feedAllOff();
                     setPathState(4);
+                    break;
+                }
+
+                // Phase 0 = feeding (with optional intake lead-in)
+                if (preloadPhase == 0) {
+                    FeedSide side = preloadSequence[preloadShotIndex];
+                    double t = actionTimer.getElapsedTimeSeconds();
+
+                    boolean useIntakeAssist = (preloadShotIndex == 1 || preloadShotIndex == 2);
+
+                    // --- Shot 2 & 3: intake assist FIRST, then feeder ---
+                    if (useIntakeAssist) {
+                        intakeAssistOn();
+
+                        // lead-in time: feeder OFF
+                        if (t < INTAKE_LEAD_TIME) {
+                            feedAllOff();
+                        } else {
+                            // after lead-in: feeder ON
+                            if (side == FeedSide.LEFT) feedLeftOn();
+                            else feedRightOn();
+                        }
+
+                        // stop after total time (lead + feed)
+                        if (t > (INTAKE_LEAD_TIME + FEED_TIME)) {
+                            feedAllOff();
+                            intakeAssistOff();
+                            actionTimer.resetTimer();
+                            preloadPhase = 1; // go recover
+                        }
+
+                        // --- Shot 1: feeder immediately, no intake assist ---
+                    } else {
+                        intakeAssistOff();
+
+                        if (side == FeedSide.LEFT) feedLeftOn();
+                        else feedRightOn();
+
+                        if (t > FEED_TIME) {
+                            feedAllOff();
+                            actionTimer.resetTimer();
+                            preloadPhase = 1; // go recover
+                        }
+                    }
+                }
+
+                // Phase 1 = recover (THIS WAS MISSING)
+                else {
+                    intakeAssistOff();
+                    feedAllOff();
+
+                    double t = actionTimer.getElapsedTimeSeconds();
+
+                    // Wait a little + let flywheel climb back, but don't deadlock forever
+                    if ((t > RECOVER_TIME && launchersAtSpeed(80)) || (t > MAX_RECOVER_TIME)) {
+                        preloadShotIndex++;
+                        preloadPhase = 0;
+                        actionTimer.resetTimer();
+                    }
                 }
                 break;
 
             /* ================= LOAD 1 ================= */
             case 4:
                 stopLaunchers();
-                setIntakeMode();
+                follower.setMaxPower(0.7);
+
+                // SUPER slow crawl
                 intakeOn();
                 follower.followPath(paths.AlligntoLoadup1stset);
                 setPathState(5);
                 break;
-
             case 5:
                 if (!follower.isBusy()) {
+                    follower.setMaxPower(0.25);
+
+                    setShootMode();        // start in intake
+                    intakeOn();
+
+                    load1ServoSwitched = false;
+                    actionTimer.resetTimer();
+
                     follower.followPath(paths.Loadup1stset);
                     setPathState(6);
                 }
                 break;
-
             case 6:
+                // Path is still running
+                if (!load1ServoSwitched &&
+                        actionTimer.getElapsedTimeSeconds() > LOAD1_SERVO_SWITCH_TIME) {
+
+                    setIntakeMode();            // 🔥 switch servo mid-path
+                    load1ServoSwitched = true;
+                }
+
+                // When path finishes
                 if (!follower.isBusy()) {
                     intakeOff();
-                    setShootMode();
+                    follower.setMaxPower(1.0);
                     follower.followPath(paths.Shoot1stset);
                     setPathState(7);
                 }
@@ -373,13 +467,22 @@ public class BlueClose extends OpMode {
     }
 
     private void feedOn() {
-        leftLaunch.setPower(1.0);
-        rightLaunch.setPower(1.0);
+        feedLeftOn();
+        feedRightOn();
     }
 
     private void feedOff() {
-        leftLaunch.setPower(0.0);
-        rightLaunch.setPower(0.0);
+        feedAllOff();
+    }
+    private void feedLeftOn()  { leftLaunch.setPower(-1.0); }
+    private void feedRightOn() { rightLaunch.setPower(1.0); }
+
+    private void feedLeftOff()  { leftLaunch.setPower(0.0); }
+    private void feedRightOff() { rightLaunch.setPower(0.0); }
+
+    private void feedAllOff() {
+        feedLeftOff();
+        feedRightOff();
     }
 
     private void stopLaunchers() {
@@ -411,7 +514,13 @@ public class BlueClose extends OpMode {
         intakeSelect.setPosition(0.63); // TeleOp shoot position
     }
 
+    private void intakeAssistOn() {
+        intake.setPower(INTAKE_ASSIST_POWER);
+    }
 
+    private void intakeAssistOff() {
+        intake.setPower(0.0);
+    }
     /** We do not use this because everything should automatically disable **/
     @Override
     public void stop() {}
