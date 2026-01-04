@@ -214,162 +214,175 @@ public class RedFar extends OpMode {
                 follower.followPath(paths.AlligntoLoadup1stset);
                 setPathState(5);
                 break;
+
             case 5:
                 if (!follower.isBusy()) {
                     follower.setMaxPower(0.25);
-
-                    setShootMode();        // start in intake
+                    setShootMode();
                     intakeOn();
 
                     load1ServoSwitched = false;
                     actionTimer.resetTimer();
 
-                    follower.followPath(paths.Loadup1stset);
+                    follower.followPath(paths.Loadup1stset); // first ball
                     setPathState(6);
                 }
                 break;
+
             case 6:
-                // Path is still running
-                if (!load1ServoSwitched &&
-                        actionTimer.getElapsedTimeSeconds() > LOAD1_SERVO_SWITCH_TIME) {
-
-                    setIntakeMode();            // 🔥 switch servo mid-path
-                    load1ServoSwitched = true;
-                }
-
-                // When path finishes
                 if (!follower.isBusy()) {
-                    intakeOff();
-                    follower.setMaxPower(1.0);
-                    follower.followPath(paths.Shoot1stset);
+                    follower.followPath(paths.Loadup1stsetBackup); //  backup
                     setPathState(7);
                 }
                 break;
 
             case 7:
+                // mid-path servo switch
+                if (!load1ServoSwitched &&
+                        actionTimer.getElapsedTimeSeconds() > LOAD1_SERVO_SWITCH_TIME) {
+                    setIntakeMode();
+                    load1ServoSwitched = true;
+                }
+
                 if (!follower.isBusy()) {
-                    actionTimer.resetTimer();
+                    follower.followPath(paths.Loadup1stset3rdBall); // get 3rd ball
                     setPathState(8);
                 }
                 break;
 
             case 8:
-                spinUpLaunchers();
-                if (launchersAtSpeed(50)) {
-                    actionTimer.resetTimer();
+                if (!follower.isBusy()) {
+                    intakeOff();
+                    follower.setMaxPower(1.0);
+                    follower.followPath(paths.Shoot1stset);
                     setPathState(9);
                 }
                 break;
 
             case 9:
-                spinUpLaunchers();
-                feedOn();
-                if (actionTimer.getElapsedTimeSeconds() > 0.4) {
-                    feedOff();
+                if (!follower.isBusy()) {
+                    actionTimer.resetTimer();
                     setPathState(10);
                 }
                 break;
 
-            /* ================= LOAD 2 ================= */
             case 10:
-                stopLaunchers();
-                setIntakeMode();
-                intakeOn();
-                follower.followPath(paths.AlligntoLoadup2ndset);
-                setPathState(11);
+                spinUpLaunchers();
+                if (launchersAtSpeed(50)) {
+                    actionTimer.resetTimer();
+                    setPathState(11);
+                }
                 break;
 
             case 11:
-                if (!follower.isBusy()) {
-                    follower.followPath(paths.Loadup2ndset);
+                spinUpLaunchers();
+                feedOn();
+                if (actionTimer.getElapsedTimeSeconds() > 0.4) {
+                    feedOff();
                     setPathState(12);
                 }
                 break;
 
+            /* ================= LOAD 2 ================= */
             case 12:
-                if (!follower.isBusy()) {
-                    intakeOff();
-                    setShootMode();
-                    follower.followPath(paths.Shoot2ndSet);
-                    setPathState(13);
-                }
+                stopLaunchers();
+                setIntakeMode();
+                intakeOn();
+                follower.followPath(paths.AlligntoLoadup2ndset);
+                setPathState(13);
                 break;
 
             case 13:
                 if (!follower.isBusy()) {
-                    actionTimer.resetTimer();
+                    follower.followPath(paths.Loadup2ndset);
                     setPathState(14);
                 }
                 break;
 
             case 14:
-                spinUpLaunchers();
-                if (launchersAtSpeed(50)) {
-                    actionTimer.resetTimer();
+                if (!follower.isBusy()) {
+                    intakeOff();
+                    setShootMode();
+                    follower.followPath(paths.Shoot2ndSet);
                     setPathState(15);
                 }
                 break;
 
             case 15:
-                spinUpLaunchers();
-                feedOn();
-                if (actionTimer.getElapsedTimeSeconds() > 0.4) {
-                    feedOff();
+                if (!follower.isBusy()) {
+                    actionTimer.resetTimer();
                     setPathState(16);
                 }
                 break;
 
-            /* ================= LOAD 3 ================= */
             case 16:
-                stopLaunchers();
-                setIntakeMode();
-                intakeOn();
-                follower.followPath(paths.Alligntoloadup3rdset);
-                setPathState(17);
+                spinUpLaunchers();
+                if (launchersAtSpeed(50)) {
+                    actionTimer.resetTimer();
+                    setPathState(17);
+                }
                 break;
 
             case 17:
-                if (!follower.isBusy()) {
-                    follower.followPath(paths.Loadup3rdset);
+                spinUpLaunchers();
+                feedOn();
+                if (actionTimer.getElapsedTimeSeconds() > 0.4) {
+                    feedOff();
                     setPathState(18);
                 }
                 break;
 
+            /* ================= LOAD 3 ================= */
             case 18:
-                if (!follower.isBusy()) {
-                    intakeOff();
-                    setShootMode();
-                    follower.followPath(paths.Shoot3rdset);
-                    setPathState(19);
-                }
+                stopLaunchers();
+                setIntakeMode();
+                intakeOn();
+                follower.followPath(paths.Alligntoloadup3rdset);
+                setPathState(19);
                 break;
 
             case 19:
                 if (!follower.isBusy()) {
-                    actionTimer.resetTimer();
+                    follower.followPath(paths.Loadup3rdset);
                     setPathState(20);
                 }
                 break;
 
             case 20:
-                spinUpLaunchers();
-                if (launchersAtSpeed(50)) {
-                    actionTimer.resetTimer();
+                if (!follower.isBusy()) {
+                    intakeOff();
+                    setShootMode();
+                    follower.followPath(paths.Shoot3rdset);
                     setPathState(21);
                 }
                 break;
 
             case 21:
-                spinUpLaunchers();
-                feedOn();
-                if (actionTimer.getElapsedTimeSeconds() > 0.4) {
-                    feedOff();
+                if (!follower.isBusy()) {
+                    actionTimer.resetTimer();
                     setPathState(22);
                 }
                 break;
 
-            /* ================= END ================= */
             case 22:
+                spinUpLaunchers();
+                if (launchersAtSpeed(50)) {
+                    actionTimer.resetTimer();
+                    setPathState(23);
+                }
+                break;
+
+            case 23:
+                spinUpLaunchers();
+                feedOn();
+                if (actionTimer.getElapsedTimeSeconds() > 0.4) {
+                    feedOff();
+                    setPathState(24);
+                }
+                break;
+
+            /* ================= END ================= */
+            case 24:
                 stopLaunchers();
                 intakeOff();
                 setPathState(-1);
@@ -495,7 +508,7 @@ public class RedFar extends OpMode {
     /* ================= INTAKE HELPERS ================= */
 
     private void intakeOn() {
-        intake.setPower(-0.8); // same as TeleOp intake-in
+        intake.setPower(-1.0); // same as TeleOp intake-in
     }
 
     private void intakeOff() {
