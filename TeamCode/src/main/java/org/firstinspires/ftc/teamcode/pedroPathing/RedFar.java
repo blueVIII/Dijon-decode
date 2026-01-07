@@ -245,6 +245,8 @@ public class RedFar extends OpMode {
                 }
 
                 if (!follower.isBusy()) {
+                    setIntakeMode();
+                    intakeOn();
                     follower.followPath(paths.Loadup1stset3rdBall); // get 3rd ball
                     setPathState(8);
                 }

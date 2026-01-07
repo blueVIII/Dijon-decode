@@ -41,17 +41,17 @@ public class Paths {
                 .build();
 
         Loadup1stset = follower.pathBuilder()
-                .addPath(new BezierLine(new Pose(101.176, 80.765), new Pose(124.882, 80.294)))
+                .addPath(new BezierLine(new Pose(101.176, 80.765), new Pose(123.882, 80.294)))
                 .setLinearHeadingInterpolation(0, 0)
                 .setVelocityConstraint(SLOW_INTAKE)
                 .build();
         Loadup1stsetBackup = follower.pathBuilder()
-                .addPath(new BezierLine(new Pose(124.882, 80.294), new Pose(120.882, 80.294)))
+                .addPath(new BezierLine(new Pose(122.882, 80.294), new Pose(119.882, 83.294)))
                 .setLinearHeadingInterpolation(0, 0)
                 .setVelocityConstraint(SLOW_INTAKE)
                 .build();
         Loadup1stset3rdBall = follower.pathBuilder()
-                .addPath(new BezierLine(new Pose(120.882, 80.294), new Pose(130.882, 80.294)))
+                .addPath(new BezierLine(new Pose(119.882, 83.294), new Pose(130.882, 83.294)))
                 .setLinearHeadingInterpolation(0, 0)
                 .setVelocityConstraint(SLOW_INTAKE)
                 .build();
