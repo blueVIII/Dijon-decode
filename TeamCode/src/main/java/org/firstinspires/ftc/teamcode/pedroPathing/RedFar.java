@@ -36,7 +36,10 @@ public class RedFar extends OpMode {
     private PIDController rightLauncherPid = new PIDController(0.06, 0, 0);
 
     // Launcher target velocity
-    private final double LAUNCHER_TARGET_VELOCITY = 1200; // Adjust this value
+    private final double LAUNCHER_TARGET_VELOCITY = 1200;
+    // Adjust this value
+    private final double LAUNCHER_STOP_VELOCITY = 0;
+
     private boolean launchersOn = false;
 
     // Hardware
@@ -216,6 +219,7 @@ public class RedFar extends OpMode {
                 break;
 
             case 5:
+                stopLaunchers();
                 if (!follower.isBusy()) {
                     follower.setMaxPower(0.25);
                     setShootMode();
@@ -230,6 +234,7 @@ public class RedFar extends OpMode {
                 break;
 
             case 6:
+                stopLaunchers();
                 if (!follower.isBusy()) {
                     follower.followPath(paths.Loadup1stsetBackup); //  backup
                     setPathState(7);
@@ -237,6 +242,7 @@ public class RedFar extends OpMode {
                 break;
 
             case 7:
+                stopLaunchers();
                 // mid-path servo switch
                 if (!load1ServoSwitched &&
                         actionTimer.getElapsedTimeSeconds() > LOAD1_SERVO_SWITCH_TIME) {
@@ -262,26 +268,89 @@ public class RedFar extends OpMode {
                 break;
 
             case 9:
-                if (!follower.isBusy()) {
-                    actionTimer.resetTimer();
-                    setPathState(10);
-                }
-                break;
+                if (!follower.isBusy()){
+                    spinUpLaunchers();
+                    if (!follower.isBusy() && launchersAtSpeed(50)) {
+                        // HARD RESET anything that could be lingering
+                        feedAllOff();
+                        intakeOff();          // ensures intake motor is NOT running on shot 1
+                        setShootMode();       // ensures your diverter/selector is in shoot position
 
-            case 10:
-                spinUpLaunchers();
-                if (launchersAtSpeed(50)) {
-                    actionTimer.resetTimer();
-                    setPathState(11);
+                        preloadShotIndex = 0;
+                        preloadPhase = 0;
+                        actionTimer.resetTimer();
+                        setPathState(11);
+                    }
                 }
                 break;
 
             case 11:
                 spinUpLaunchers();
-                feedOn();
-                if (actionTimer.getElapsedTimeSeconds() > 0.4) {
-                    feedOff();
+
+                // done with all 3 shots
+                if (preloadShotIndex >= preloadSequence.length) {
+                    intakeAssistOff();
+                    feedAllOff();
                     setPathState(12);
+                    break;
+                }
+
+                // Phase 0 = feeding (with optional intake lead-in)
+                if (preloadPhase == 0) {
+                    FeedSide side = preloadSequence[preloadShotIndex];
+                    double t = actionTimer.getElapsedTimeSeconds();
+
+                    boolean useIntakeAssist = (preloadShotIndex == 1 || preloadShotIndex == 2);
+
+                    // --- Shot 2 & 3: intake assist FIRST, then feeder ---
+                    if (useIntakeAssist) {
+                        intakeAssistOn();
+
+                        // lead-in time: feeder OFF
+                        if (t < INTAKE_LEAD_TIME) {
+                            feedAllOff();
+                        } else {
+                            // after lead-in: feeder ON
+                            if (side == FeedSide.LEFT) feedLeftOn();
+                            else feedRightOn();
+                        }
+
+                        // stop after total time (lead + feed)
+                        if (t > (INTAKE_LEAD_TIME + FEED_TIME)) {
+                            feedAllOff();
+                            intakeAssistOff();
+                            actionTimer.resetTimer();
+                            preloadPhase = 1; // go recover
+                        }
+
+                        // --- Shot 1: feeder immediately, no intake assist ---
+                    } else {
+                        intakeAssistOff();
+
+                        if (side == FeedSide.LEFT) feedLeftOn();
+                        else feedRightOn();
+
+                        if (t > FEED_TIME) {
+                            feedAllOff();
+                            actionTimer.resetTimer();
+                            preloadPhase = 1; // go recover
+                        }
+                    }
+                }
+
+                // Phase 1 = recover (THIS WAS MISSING)
+                else {
+                    intakeAssistOff();
+                    feedAllOff();
+
+                    double t = actionTimer.getElapsedTimeSeconds();
+
+                    // Wait a little + let flywheel climb back, but don't deadlock forever
+                    if ((t > RECOVER_TIME && launchersAtSpeed(80)) || (t > MAX_RECOVER_TIME)) {
+                        preloadShotIndex++;
+                        preloadPhase = 0;
+                        actionTimer.resetTimer();
+                    }
                 }
                 break;
 
@@ -476,6 +545,19 @@ public class RedFar extends OpMode {
         rightLauncher.setPower(rightPower);
     }
 
+    private void stopLaunchers() {
+        double leftPower = leftLauncherPid.calculate(
+                LAUNCHER_STOP_VELOCITY,
+                leftLauncher.getVelocity()
+        );
+        double rightPower = rightLauncherPid.calculate(
+                LAUNCHER_STOP_VELOCITY,
+                rightLauncher.getVelocity()
+        );
+
+        leftLauncher.setPower(leftPower);
+        rightLauncher.setPower(rightPower);
+    }
     private boolean launchersAtSpeed(double tolerance) {
         return Math.abs(leftLauncher.getVelocity() - LAUNCHER_TARGET_VELOCITY) < tolerance
                 && Math.abs(rightLauncher.getVelocity() - LAUNCHER_TARGET_VELOCITY) < tolerance;
@@ -500,12 +582,6 @@ public class RedFar extends OpMode {
         feedRightOff();
     }
 
-    private void stopLaunchers() {
-        leftLauncher.setPower(0);
-        rightLauncher.setPower(0);
-        leftLauncherPid.reset();
-        rightLauncherPid.reset();
-    }
 
     /* ================= INTAKE HELPERS ================= */
 
