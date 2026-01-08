@@ -546,21 +546,31 @@ public class RedFar extends OpMode {
     }
 
     private void stopLaunchers() {
-        double leftPower = leftLauncherPid.calculate(
-                LAUNCHER_STOP_VELOCITY,
-                leftLauncher.getVelocity()
-        );
-        double rightPower = rightLauncherPid.calculate(
-                LAUNCHER_STOP_VELOCITY,
-                rightLauncher.getVelocity()
-        );
-
-        leftLauncher.setPower(leftPower);
-        rightLauncher.setPower(rightPower);
+//        double leftPower = leftLauncherPid.calculate(
+//                LAUNCHER_STOP_VELOCITY,
+//                leftLauncher.getVelocity()
+//        );
+//        double rightPower = rightLauncherPid.calculate(
+//                LAUNCHER_STOP_VELOCITY,
+//                rightLauncher.getVelocity()
+//        );
+//
+//        while (!launchersAtZero(30)) {
+//            leftLauncher.setPower(leftPower);
+//            rightLauncher.setPower(rightPower);
+//        }
+//        return;
+        leftLauncher.setPower(-0.1);
+        rightLauncher.setPower(-0.1);
     }
     private boolean launchersAtSpeed(double tolerance) {
         return Math.abs(leftLauncher.getVelocity() - LAUNCHER_TARGET_VELOCITY) < tolerance
                 && Math.abs(rightLauncher.getVelocity() - LAUNCHER_TARGET_VELOCITY) < tolerance;
+    }
+
+    private boolean launchersAtZero(double tolerance) {
+        return Math.abs(leftLauncher.getVelocity()) < tolerance
+                && Math.abs(rightLauncher.getVelocity()) < tolerance;
     }
 
     private void feedOn() {

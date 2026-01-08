@@ -58,8 +58,8 @@ public class Paths {
 
 
         Shoot1stset = follower.pathBuilder()
-                .addPath(new BezierLine(new Pose(130.882, 83.294), new Pose(107.765, 92.471)))
-                .setLinearHeadingInterpolation(Math.toRadians(0), Math.toRadians(45))
+                .addPath(new BezierLine(new Pose(130.882, 83.294), new Pose(107.765, 97.471)))
+                .setLinearHeadingInterpolation(Math.toRadians(0), Math.toRadians(50))
                 .setVelocityConstraint(FAST_TRAVEL)
                 .build();
 
