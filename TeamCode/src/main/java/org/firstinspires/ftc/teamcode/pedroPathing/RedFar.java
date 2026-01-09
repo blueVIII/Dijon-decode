@@ -44,7 +44,7 @@ public class RedFar extends OpMode {
     private Servo cameraServo;
 
     // Optional: camera servo positions
-    private static final double CAM_LEFT = 0.25;
+    private static final double CAM_LEFT = 0.22;
     private static final double CAM_CENTER = 0.55;
     private static final double CAM_RIGHT = 0.8;
     private int detectedTagId = -1; // -1 = none seen
@@ -226,6 +226,9 @@ public class RedFar extends OpMode {
                 break;
 
             case 1:
+                updateAprilTag();
+                telemetry.addData("INIT Tag ID", detectedTagId);
+                telemetry.update();
                 spinUpLaunchers();
 
                 if (!follower.isBusy() && launchersAtSpeed(50)) {
@@ -622,7 +625,7 @@ public class RedFar extends OpMode {
         intakeSelect = hardwareMap.get(Servo.class, "intakeSelect");
 
         cameraServo = hardwareMap.get(Servo.class, "cameraServo");
-        cameraServo.setPosition(CAM_RIGHT);
+        cameraServo.setPosition(CAM_LEFT);
 
         initAprilTag();
     }
@@ -630,9 +633,6 @@ public class RedFar extends OpMode {
     /** This method is called continuously after Init while waiting for "play". **/
     @Override
     public void init_loop() {
-        updateAprilTag();
-        telemetry.addData("INIT Tag ID", detectedTagId);
-        telemetry.update();
     }
 
 
@@ -695,8 +695,6 @@ public class RedFar extends OpMode {
 
         double targetPos = CAM_CENTER + error * CAM_KP;
         targetPos = Math.max(0.0, Math.min(1.0, targetPos));
-
-        cameraServo.setPosition(targetPos);
 
         telemetry.addData("Detected Tag ID", detectedTagId);
         telemetry.addData("Tag Yaw", bestTag.ftcPose.yaw);
