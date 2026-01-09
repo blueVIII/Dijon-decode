@@ -20,6 +20,13 @@ import org.firstinspires.ftc.teamcode.teleop.PIDController;
 import org.firstinspires.ftc.vision.VisionPortal;
 import org.firstinspires.ftc.vision.apriltag.AprilTagProcessor;
 
+import org.firstinspires.ftc.robotcore.external.hardware.camera.WebcamName;
+import org.firstinspires.ftc.vision.VisionPortal;
+import org.firstinspires.ftc.vision.apriltag.AprilTagDetection;
+import org.firstinspires.ftc.vision.apriltag.AprilTagProcessor;
+
+import java.util.List;
+
 
 @Autonomous(name = "Red Far Auto", group = "Examples")
 public class RedFar extends OpMode {
@@ -28,6 +35,23 @@ public class RedFar extends OpMode {
 
     // Drivetrain
     private DriveTrain driveTrain;
+
+    // April tag initialization
+    private VisionPortal visionPortal;
+    private AprilTagProcessor aprilTag;
+
+    // Camera servo
+    private Servo cameraServo;
+
+    // Optional: camera servo positions
+    private static final double CAM_LEFT = 0.25;
+    private static final double CAM_CENTER = 0.55;
+    private static final double CAM_RIGHT = 0.8;
+    private int detectedTagId = -1; // -1 = none seen
+
+    private static final double CAM_KP = 0.01;   // tune
+    private static final double CAM_DEADBAND = 1.5; // degrees
+
 
     private Paths paths;
 
@@ -58,11 +82,8 @@ public class RedFar extends OpMode {
     private int pathState;
     private enum FeedSide { LEFT, RIGHT }
 
-    private final FeedSide[] preloadSequence = {
-            FeedSide.LEFT,   // left chamber ball #1
-            FeedSide.RIGHT,  // right chamber only ball
-            FeedSide.LEFT    // left chamber ball #2
-    };
+    private FeedSide[] preloadSequence = {};
+
 
     private int preloadShotIndex = 0;
     private int preloadPhase = 0; // 0 = feeding, 1 = recovering
@@ -74,9 +95,7 @@ public class RedFar extends OpMode {
     private static final double INTAKE_DRIVE_SCALE = 0.1; // 25% speed
     private static final double LOAD1_SERVO_SWITCH_TIME = 5.5; // tune (seconds)
     private boolean load1ServoSwitched = false;
-    // AprilTag
-    private VisionPortal visionPortal;
-    private AprilTagProcessor aprilTag;
+
 
     // Dynamic launcher target
     private double launcherTargetVelocity = 1200; // fallback default
@@ -93,6 +112,91 @@ public class RedFar extends OpMode {
 
     private Path scorePreload;
 //    private PathChain grabPickup1, scorePickup1, grabPickup2, scorePickup2, grabPickup3, scorePickup3;
+
+    private void configurePreloadSequence(int tagId) {
+
+        switch (tagId) {
+
+
+
+            case 21: // RIGHT LEFT LEFT
+
+                preloadSequence = new FeedSide[] {
+
+                        FeedSide.RIGHT,
+
+                        FeedSide.LEFT,
+
+                        FeedSide.LEFT
+
+                };
+
+                break;
+
+
+
+            case 22: // LEFT RIGHT LEFT (default / current)
+
+                preloadSequence = new FeedSide[] {
+
+                        FeedSide.LEFT,
+
+                        FeedSide.RIGHT,
+
+                        FeedSide.LEFT
+
+                };
+
+                break;
+
+
+
+            case 23: // LEFT RIGHT RIGHT
+
+                preloadSequence = new FeedSide[] {
+
+                        FeedSide.LEFT,
+
+                        FeedSide.RIGHT,
+
+                        FeedSide.RIGHT
+
+                };
+
+                break;
+
+
+
+            default:
+
+                // Failsafe
+
+                preloadSequence = new FeedSide[] {
+
+                        FeedSide.LEFT,
+
+                        FeedSide.RIGHT,
+
+                        FeedSide.LEFT
+
+                };
+
+                break;
+
+        }
+
+    }
+
+    private void initAprilTag() {
+
+        aprilTag = new AprilTagProcessor.Builder().build();
+
+        VisionPortal.Builder builder = new VisionPortal.Builder();
+        builder.setCamera(hardwareMap.get(WebcamName.class, "Webcam 1"));
+        builder.addProcessor(aprilTag);
+
+        visionPortal = builder.build();
+    }
 
     public void buildPaths() {
         /* Drive straight from startPose to scorePose */
@@ -517,17 +621,28 @@ public class RedFar extends OpMode {
         intake = hardwareMap.get(DcMotor.class, "intake");
         intakeSelect = hardwareMap.get(Servo.class, "intakeSelect");
 
+        cameraServo = hardwareMap.get(Servo.class, "cameraServo");
+        cameraServo.setPosition(CAM_RIGHT);
+
+        initAprilTag();
     }
 
     /** This method is called continuously after Init while waiting for "play". **/
     @Override
-    public void init_loop() {}
+    public void init_loop() {
+        updateAprilTag();
+        telemetry.addData("INIT Tag ID", detectedTagId);
+        telemetry.update();
+    }
+
 
     /** This method is called once at the start of the OpMode.
      * It runs all the setup actions, including building paths and starting the path system **/
     @Override
     public void start() {
         opmodeTimer.resetTimer();
+        configurePreloadSequence(detectedTagId);
+
         setPathState(0);
     }
 
@@ -544,6 +659,50 @@ public class RedFar extends OpMode {
         leftLauncher.setPower(leftPower);
         rightLauncher.setPower(rightPower);
     }
+
+    private void updateAprilTag() {
+        List<AprilTagDetection> detections = aprilTag.getDetections();
+
+        if (detections.isEmpty()) {
+            detectedTagId = -1;
+            return;
+        }
+
+        AprilTagDetection bestTag = null;
+
+        // Prefer the goal tag if present
+        for (AprilTagDetection tag : detections) {
+            if (tag.id == GOAL_TAG_ID) {
+                bestTag = tag;
+                break;
+            }
+        }
+
+        // Otherwise take the first tag
+        if (bestTag == null) {
+            bestTag = detections.get(0);
+        }
+
+        // === STORE THE ID ===
+        detectedTagId = bestTag.id;
+
+        // === OPTIONAL: camera servo aiming ===
+        double error = -bestTag.ftcPose.yaw;
+
+        if (Math.abs(error) < CAM_DEADBAND) {
+            error = 0;
+        }
+
+        double targetPos = CAM_CENTER + error * CAM_KP;
+        targetPos = Math.max(0.0, Math.min(1.0, targetPos));
+
+        cameraServo.setPosition(targetPos);
+
+        telemetry.addData("Detected Tag ID", detectedTagId);
+        telemetry.addData("Tag Yaw", bestTag.ftcPose.yaw);
+    }
+
+
 
     private void stopLaunchers() {
 //        double leftPower = leftLauncherPid.calculate(
@@ -624,5 +783,10 @@ public class RedFar extends OpMode {
     }
     /** We do not use this because everything should automatically disable **/
     @Override
-    public void stop() {}
+    public void stop() {
+        if (visionPortal != null) {
+            visionPortal.close();
+        }
+    }
+
 }
