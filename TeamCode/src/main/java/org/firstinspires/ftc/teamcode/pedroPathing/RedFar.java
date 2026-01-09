@@ -82,6 +82,18 @@ public class RedFar extends OpMode {
     private int pathState;
     private enum FeedSide { LEFT, RIGHT }
 
+    private enum PreloadMode {
+        SHOT_SEQUENCE,        // existing L-R-L logic (tag 22)
+        LEFT_THEN_RIGHT,      // tag 21
+        RIGHT_THEN_LEFT       // tag 23
+    }
+
+    private PreloadMode preloadMode = PreloadMode.SHOT_SEQUENCE;
+    private int preloadContinuousPhase = 0; // 0 = first side, 1 = second side
+
+    private static final double LEFT_UNLOAD_TIME = 4.0;   // seconds
+    private static final double RIGHT_UNLOAD_TIME = 3.0;  // seconds
+
     private FeedSide[] preloadSequence = {};
 
 
@@ -114,77 +126,25 @@ public class RedFar extends OpMode {
 //    private PathChain grabPickup1, scorePickup1, grabPickup2, scorePickup2, grabPickup3, scorePickup3;
 
     private void configurePreloadSequence(int tagId) {
-
         switch (tagId) {
-
-
-
-            case 21: // RIGHT LEFT LEFT
-
-                preloadSequence = new FeedSide[] {
-
-                        FeedSide.RIGHT,
-
-                        FeedSide.LEFT,
-
-                        FeedSide.LEFT
-
-                };
-
+            case 21:
+                preloadMode = PreloadMode.LEFT_THEN_RIGHT;
                 break;
 
-
-
-            case 22: // LEFT RIGHT LEFT (default / current)
-
-                preloadSequence = new FeedSide[] {
-
-                        FeedSide.LEFT,
-
-                        FeedSide.RIGHT,
-
-                        FeedSide.LEFT
-
-                };
-
+            case 23:
+                preloadMode = PreloadMode.RIGHT_THEN_LEFT;
                 break;
 
-
-
-            case 23: // LEFT RIGHT RIGHT
-
-                preloadSequence = new FeedSide[] {
-
-                        FeedSide.LEFT,
-
-                        FeedSide.RIGHT,
-
-                        FeedSide.RIGHT
-
-                };
-
-                break;
-
-
-
+            case 22:
             default:
-
-                // Failsafe
-
+                preloadMode = PreloadMode.SHOT_SEQUENCE;
                 preloadSequence = new FeedSide[] {
-
                         FeedSide.LEFT,
-
                         FeedSide.RIGHT,
-
                         FeedSide.LEFT
-
                 };
-
                 break;
-
         }
-
     }
 
     private void initAprilTag() {
@@ -239,6 +199,7 @@ public class RedFar extends OpMode {
 
                     preloadShotIndex = 0;
                     preloadPhase = 0;
+                    preloadContinuousPhase = 0;
                     actionTimer.resetTimer();
                     setPathState(2);
                 }
@@ -247,69 +208,105 @@ public class RedFar extends OpMode {
             case 2:
                 spinUpLaunchers();
 
-                // done with all 3 shots
-                if (preloadShotIndex >= preloadSequence.length) {
-                    intakeAssistOff();
-                    feedAllOff();
-                    setPathState(4);
+                // ================= TAG 22: EXISTING SHOT-BASED LOGIC =================
+                if (preloadMode == PreloadMode.SHOT_SEQUENCE) {
+
+                    if (preloadShotIndex >= preloadSequence.length) {
+                        intakeAssistOff();
+                        feedAllOff();
+                        setPathState(4);
+                        break;
+                    }
+
+                    if (preloadPhase == 0) {
+                        FeedSide side = preloadSequence[preloadShotIndex];
+                        double t = actionTimer.getElapsedTimeSeconds();
+
+                        boolean useIntakeAssist = (preloadShotIndex == 1 || preloadShotIndex == 2);
+
+                        if (useIntakeAssist) {
+                            intakeAssistOn();
+
+                            if (t < INTAKE_LEAD_TIME) {
+                                feedAllOff();
+                            } else {
+                                if (side == FeedSide.LEFT) feedLeftOn();
+                                else feedRightOn();
+                            }
+
+                            if (t > (INTAKE_LEAD_TIME + FEED_TIME)) {
+                                feedAllOff();
+                                intakeAssistOff();
+                                actionTimer.resetTimer();
+                                preloadPhase = 1;
+                            }
+                        } else {
+                            intakeAssistOff();
+
+                            if (side == FeedSide.LEFT) feedLeftOn();
+                            else feedRightOn();
+
+                            if (t > FEED_TIME) {
+                                feedAllOff();
+                                actionTimer.resetTimer();
+                                preloadPhase = 1;
+                            }
+                        }
+                    } else {
+                        intakeAssistOff();
+                        feedAllOff();
+
+                        double t = actionTimer.getElapsedTimeSeconds();
+
+                        if ((t > RECOVER_TIME && launchersAtSpeed(80)) || (t > MAX_RECOVER_TIME)) {
+                            preloadShotIndex++;
+                            preloadPhase = 0;
+                            actionTimer.resetTimer();
+                        }
+                    }
                     break;
                 }
 
-                // Phase 0 = feeding (with optional intake lead-in)
-                if (preloadPhase == 0) {
-                    FeedSide side = preloadSequence[preloadShotIndex];
-                    double t = actionTimer.getElapsedTimeSeconds();
+                // ================= TAG 21 / 23: CONTINUOUS UNLOAD =================
+                intakeAssistOn();
 
-                    boolean useIntakeAssist = (preloadShotIndex == 1 || preloadShotIndex == 2);
-
-                    // --- Shot 2 & 3: intake assist FIRST, then feeder ---
-                    if (useIntakeAssist) {
-                        intakeAssistOn();
-
-                        // lead-in time: feeder OFF
-                        if (t < INTAKE_LEAD_TIME) {
+                if (preloadContinuousPhase == 0) {
+                    // FIRST SIDE
+                    if (preloadMode == PreloadMode.LEFT_THEN_RIGHT) {
+                        feedLeftOn();
+                        feedRightOff();
+                        if (actionTimer.getElapsedTimeSeconds() > LEFT_UNLOAD_TIME) {
                             feedAllOff();
-                        } else {
-                            // after lead-in: feeder ON
-                            if (side == FeedSide.LEFT) feedLeftOn();
-                            else feedRightOn();
-                        }
-
-                        // stop after total time (lead + feed)
-                        if (t > (INTAKE_LEAD_TIME + FEED_TIME)) {
-                            feedAllOff();
-                            intakeAssistOff();
                             actionTimer.resetTimer();
-                            preloadPhase = 1; // go recover
+                            preloadContinuousPhase = 1;
                         }
-
-                        // --- Shot 1: feeder immediately, no intake assist ---
                     } else {
-                        intakeAssistOff();
-
-                        if (side == FeedSide.LEFT) feedLeftOn();
-                        else feedRightOn();
-
-                        if (t > FEED_TIME) {
+                        feedRightOn();
+                        feedLeftOff();
+                        if (actionTimer.getElapsedTimeSeconds() > RIGHT_UNLOAD_TIME) {
                             feedAllOff();
                             actionTimer.resetTimer();
-                            preloadPhase = 1; // go recover
+                            preloadContinuousPhase = 1;
                         }
                     }
-                }
-
-                // Phase 1 = recover (THIS WAS MISSING)
-                else {
-                    intakeAssistOff();
-                    feedAllOff();
-
-                    double t = actionTimer.getElapsedTimeSeconds();
-
-                    // Wait a little + let flywheel climb back, but don't deadlock forever
-                    if ((t > RECOVER_TIME && launchersAtSpeed(80)) || (t > MAX_RECOVER_TIME)) {
-                        preloadShotIndex++;
-                        preloadPhase = 0;
-                        actionTimer.resetTimer();
+                } else {
+                    // SECOND SIDE
+                    if (preloadMode == PreloadMode.LEFT_THEN_RIGHT) {
+                        feedRightOn();
+                        feedLeftOff();
+                        if (actionTimer.getElapsedTimeSeconds() > RIGHT_UNLOAD_TIME) {
+                            feedAllOff();
+                            intakeAssistOff();
+                            setPathState(4);
+                        }
+                    } else {
+                        feedLeftOn();
+                        feedRightOff();
+                        if (actionTimer.getElapsedTimeSeconds() > LEFT_UNLOAD_TIME) {
+                            feedAllOff();
+                            intakeAssistOff();
+                            setPathState(4);
+                        }
                     }
                 }
                 break;
