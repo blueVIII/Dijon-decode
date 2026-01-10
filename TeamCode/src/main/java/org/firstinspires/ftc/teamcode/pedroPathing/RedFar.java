@@ -44,9 +44,9 @@ public class RedFar extends OpMode {
     private Servo cameraServo;
 
     // Optional: camera servo positions
-    private static final double CAM_LEFT = 0.22;
+    private static final double CAM_LEFT = 0;
     private static final double CAM_CENTER = 0.55;
-    private static final double CAM_RIGHT = 0.8;
+    private static final double CAM_RIGHT = 0.83;
     private int detectedTagId = -1; // -1 = none seen
 
     private static final double CAM_KP = 0.01;   // tune
@@ -187,6 +187,7 @@ public class RedFar extends OpMode {
 
             case 1:
                 updateAprilTag();
+
                 telemetry.addData("INIT Tag ID", detectedTagId);
                 telemetry.update();
                 spinUpLaunchers();
@@ -630,6 +631,10 @@ public class RedFar extends OpMode {
     /** This method is called continuously after Init while waiting for "play". **/
     @Override
     public void init_loop() {
+        updateAprilTag();
+
+        telemetry.addData("INIT Tag ID", detectedTagId);
+        telemetry.update();
     }
 
 
