@@ -1,66 +1,43 @@
 package org.firstinspires.ftc.teamcode.pedroPathing;
+
 import com.pedropathing.follower.Follower;
 import com.pedropathing.geometry.BezierLine;
 import com.pedropathing.geometry.Pose;
 import com.pedropathing.paths.Path;
 import com.pedropathing.util.Timer;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
-import  com.qualcomm.robotcore.eventloop.opmode.OpMode;
+import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.hardware.CRServo;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.util.ElapsedTime;
 
-import org.firstinspires.ftc.teamcode.pedroPathing.Constants;
-import org.firstinspires.ftc.teamcode.pedroPathing.Paths;
 import org.firstinspires.ftc.teamcode.teleop.DriveTrain;
 import org.firstinspires.ftc.teamcode.teleop.PIDController;
-
 import org.firstinspires.ftc.vision.VisionPortal;
 import org.firstinspires.ftc.vision.apriltag.AprilTagProcessor;
 
-import org.firstinspires.ftc.robotcore.external.hardware.camera.WebcamName;
-import org.firstinspires.ftc.vision.VisionPortal;
-import org.firstinspires.ftc.vision.apriltag.AprilTagDetection;
-import org.firstinspires.ftc.vision.apriltag.AprilTagProcessor;
 
-import java.util.List;
-
-
-@Autonomous(name = "Red Far Auto", group = "Examples")
-public class RedFar extends OpMode {
+@Autonomous(name = "Blue Close Auto", group = "Examples")
+public class BlueClose extends OpMode {
 
     private ElapsedTime runtime = new ElapsedTime();
 
     // Drivetrain
     private DriveTrain driveTrain;
 
-    // April tag initialization
-    private VisionPortal visionPortal;
-    private AprilTagProcessor aprilTag;
-
-    // Camera servo
-    private Servo cameraServo;
-
-    // Optional: camera servo positions
-    private static final double CAM_LEFT = 0;
-    private static final double CAM_CENTER = 0.55;
-    private static final double CAM_RIGHT = 0.83;
-    private int detectedTagId = -1; // -1 = none seen
-
-    private static final double CAM_KP = 0.01;   // tune
-    private static final double CAM_DEADBAND = 1.5; // degrees
-
-
-    private Paths paths;
+    private BlueClosePaths paths;
 
     // PID Controllers for the launchers
     private PIDController leftLauncherPid = new PIDController(0.06, 0, 0);
     private PIDController rightLauncherPid = new PIDController(0.06, 0, 0);
 
     // Launcher target velocity
-    private final double LAUNCHER_TARGET_VELOCITY = 1200;
+    private final double LAUNCHER_TARGET_VELOCITY = 1125;
+    // Delay at start
+    private static final double START_DELAY = 4.0; // seconds
+
     // Adjust this value
     private final double LAUNCHER_STOP_VELOCITY = 0;
 
@@ -82,20 +59,11 @@ public class RedFar extends OpMode {
     private int pathState;
     private enum FeedSide { LEFT, RIGHT }
 
-    private enum PreloadMode {
-        SHOT_SEQUENCE,        // existing L-R-L logic (tag 22)
-        LEFT_THEN_RIGHT,      // tag 21
-        RIGHT_THEN_LEFT       // tag 23
-    }
-
-    private PreloadMode preloadMode = PreloadMode.SHOT_SEQUENCE;
-    private int preloadContinuousPhase = 0; // 0 = first side, 1 = second side
-
-    private static final double LEFT_UNLOAD_TIME = 4.0;   // seconds
-    private static final double RIGHT_UNLOAD_TIME = 3.0;  // seconds
-
-    private FeedSide[] preloadSequence = {};
-
+    private final FeedSide[] preloadSequence = {
+            FeedSide.LEFT,   // left chamber ball #1
+            FeedSide.RIGHT,  // right chamber only ball
+            FeedSide.LEFT    // left chamber ball #2
+    };
 
     private int preloadShotIndex = 0;
     private int preloadPhase = 0; // 0 = feeding, 1 = recovering
@@ -107,7 +75,9 @@ public class RedFar extends OpMode {
     private static final double INTAKE_DRIVE_SCALE = 0.1; // 25% speed
     private static final double LOAD1_SERVO_SWITCH_TIME = 5.5; // tune (seconds)
     private boolean load1ServoSwitched = false;
-
+    // AprilTag
+    private VisionPortal visionPortal;
+    private AprilTagProcessor aprilTag;
 
     // Dynamic launcher target
     private double launcherTargetVelocity = 1200; // fallback default
@@ -116,47 +86,14 @@ public class RedFar extends OpMode {
     private static final int GOAL_TAG_ID = 24; // CHANGE to your actual goal tag ID
 
 
-    private final Pose startPose = new Pose(122.5, 128.5, Math.toRadians(230)); // Start Pose of our robot.
-    private final Pose scorePose = new Pose(108, 108, Math.toRadians(45)); // Scoring Pose of our robot. It is facing the goal at a 135 degree angle.
+    private final Pose startPose = new Pose(21.5, 128.5, Math.toRadians(310));
+    private final Pose scorePose = new Pose(36, 108, Math.toRadians(135));
 //    private final Pose pickup1Pose = new Pose(37, 121, Math.toRadians(0)); // Highest (First Set) of Artifacts from the Spike Mark.
 //    private final Pose pickup2Pose = new Pose(43, 130, Math.toRadians(0)); // Middle (Second Set) of Artifacts from the Spike Mark.
 //    private final Pose pickup3Pose = new Pose(49, 135, Math.toRadians(0)); // Lowest (Third Set) of Artifacts from the Spike Mark.
 
     private Path scorePreload;
 //    private PathChain grabPickup1, scorePickup1, grabPickup2, scorePickup2, grabPickup3, scorePickup3;
-
-    private void configurePreloadSequence(int tagId) {
-        switch (tagId) {
-            case 21:
-                preloadMode = PreloadMode.LEFT_THEN_RIGHT;
-                break;
-
-            case 23:
-                preloadMode = PreloadMode.RIGHT_THEN_LEFT;
-                break;
-
-            case 22:
-            default:
-                preloadMode = PreloadMode.SHOT_SEQUENCE;
-                preloadSequence = new FeedSide[] {
-                        FeedSide.LEFT,
-                        FeedSide.RIGHT,
-                        FeedSide.LEFT
-                };
-                break;
-        }
-    }
-
-    private void initAprilTag() {
-
-        aprilTag = new AprilTagProcessor.Builder().build();
-
-        VisionPortal.Builder builder = new VisionPortal.Builder();
-        builder.setCamera(hardwareMap.get(WebcamName.class, "Webcam 1"));
-        builder.addProcessor(aprilTag);
-
-        visionPortal = builder.build();
-    }
 
     public void buildPaths() {
         /* Drive straight from startPose to scorePose */
@@ -177,6 +114,12 @@ public class RedFar extends OpMode {
 
     public void autonomousPathUpdate() {
         switch (pathState) {
+            case -1:
+                // 4-second delay before starting auto
+                if (actionTimer.getElapsedTimeSeconds() >= START_DELAY) {
+                    setPathState(0);
+                }
+                break;
 
             /* ================= PRELOAD ================= */
             case 0:
@@ -186,10 +129,6 @@ public class RedFar extends OpMode {
                 break;
 
             case 1:
-                updateAprilTag();
-
-                telemetry.addData("INIT Tag ID", detectedTagId);
-                telemetry.update();
                 spinUpLaunchers();
 
                 if (!follower.isBusy() && launchersAtSpeed(50)) {
@@ -200,7 +139,6 @@ public class RedFar extends OpMode {
 
                     preloadShotIndex = 0;
                     preloadPhase = 0;
-                    preloadContinuousPhase = 0;
                     actionTimer.resetTimer();
                     setPathState(2);
                 }
@@ -209,105 +147,69 @@ public class RedFar extends OpMode {
             case 2:
                 spinUpLaunchers();
 
-                // ================= TAG 22: EXISTING SHOT-BASED LOGIC =================
-                if (preloadMode == PreloadMode.SHOT_SEQUENCE) {
-
-                    if (preloadShotIndex >= preloadSequence.length) {
-                        intakeAssistOff();
-                        feedAllOff();
-                        setPathState(4);
-                        break;
-                    }
-
-                    if (preloadPhase == 0) {
-                        FeedSide side = preloadSequence[preloadShotIndex];
-                        double t = actionTimer.getElapsedTimeSeconds();
-
-                        boolean useIntakeAssist = (preloadShotIndex == 1 || preloadShotIndex == 2);
-
-                        if (useIntakeAssist) {
-                            intakeAssistOn();
-
-                            if (t < INTAKE_LEAD_TIME) {
-                                feedAllOff();
-                            } else {
-                                if (side == FeedSide.LEFT) feedLeftOn();
-                                else feedRightOn();
-                            }
-
-                            if (t > (INTAKE_LEAD_TIME + FEED_TIME)) {
-                                feedAllOff();
-                                intakeAssistOff();
-                                actionTimer.resetTimer();
-                                preloadPhase = 1;
-                            }
-                        } else {
-                            intakeAssistOff();
-
-                            if (side == FeedSide.LEFT) feedLeftOn();
-                            else feedRightOn();
-
-                            if (t > FEED_TIME) {
-                                feedAllOff();
-                                actionTimer.resetTimer();
-                                preloadPhase = 1;
-                            }
-                        }
-                    } else {
-                        intakeAssistOff();
-                        feedAllOff();
-
-                        double t = actionTimer.getElapsedTimeSeconds();
-
-                        if ((t > RECOVER_TIME && launchersAtSpeed(80)) || (t > MAX_RECOVER_TIME)) {
-                            preloadShotIndex++;
-                            preloadPhase = 0;
-                            actionTimer.resetTimer();
-                        }
-                    }
+                // done with all 3 shots
+                if (preloadShotIndex >= preloadSequence.length) {
+                    intakeAssistOff();
+                    feedAllOff();
+                    setPathState(4);
                     break;
                 }
 
-                // ================= TAG 21 / 23: CONTINUOUS UNLOAD =================
-                intakeAssistOn();
+                // Phase 0 = feeding (with optional intake lead-in)
+                if (preloadPhase == 0) {
+                    FeedSide side = preloadSequence[preloadShotIndex];
+                    double t = actionTimer.getElapsedTimeSeconds();
 
-                if (preloadContinuousPhase == 0) {
-                    // FIRST SIDE
-                    if (preloadMode == PreloadMode.LEFT_THEN_RIGHT) {
-                        feedLeftOn();
-                        feedRightOff();
-                        if (actionTimer.getElapsedTimeSeconds() > LEFT_UNLOAD_TIME) {
+                    boolean useIntakeAssist = (preloadShotIndex == 1 || preloadShotIndex == 2);
+
+                    // --- Shot 2 & 3: intake assist FIRST, then feeder ---
+                    if (useIntakeAssist) {
+                        intakeAssistOn();
+
+                        // lead-in time: feeder OFF
+                        if (t < INTAKE_LEAD_TIME) {
                             feedAllOff();
-                            actionTimer.resetTimer();
-                            preloadContinuousPhase = 1;
+                        } else {
+                            // after lead-in: feeder ON
+                            if (side == FeedSide.LEFT) feedLeftOn();
+                            else feedRightOn();
                         }
+
+                        // stop after total time (lead + feed)
+                        if (t > (INTAKE_LEAD_TIME + FEED_TIME)) {
+                            feedAllOff();
+                            intakeAssistOff();
+                            actionTimer.resetTimer();
+                            preloadPhase = 1; // go recover
+                        }
+
+                        // --- Shot 1: feeder immediately, no intake assist ---
                     } else {
-                        feedRightOn();
-                        feedLeftOff();
-                        if (actionTimer.getElapsedTimeSeconds() > RIGHT_UNLOAD_TIME) {
+                        intakeAssistOff();
+
+                        if (side == FeedSide.LEFT) feedLeftOn();
+                        else feedRightOn();
+
+                        if (t > FEED_TIME) {
                             feedAllOff();
                             actionTimer.resetTimer();
-                            preloadContinuousPhase = 1;
+                            preloadPhase = 1; // go recover
                         }
                     }
-                } else {
-                    // SECOND SIDE
-                    if (preloadMode == PreloadMode.LEFT_THEN_RIGHT) {
-                        feedRightOn();
-                        feedLeftOff();
-                        if (actionTimer.getElapsedTimeSeconds() > RIGHT_UNLOAD_TIME) {
-                            feedAllOff();
-                            intakeAssistOff();
-                            setPathState(4);
-                        }
-                    } else {
-                        feedLeftOn();
-                        feedRightOff();
-                        if (actionTimer.getElapsedTimeSeconds() > LEFT_UNLOAD_TIME) {
-                            feedAllOff();
-                            intakeAssistOff();
-                            setPathState(4);
-                        }
+                }
+
+                // Phase 1 = recover (THIS WAS MISSING)
+                else {
+                    intakeAssistOff();
+                    feedAllOff();
+
+                    double t = actionTimer.getElapsedTimeSeconds();
+
+                    // Wait a little + let flywheel climb back, but don't deadlock forever
+                    if ((t > RECOVER_TIME && launchersAtSpeed(80)) || (t > MAX_RECOVER_TIME)) {
+                        preloadShotIndex++;
+                        preloadPhase = 0;
+                        actionTimer.resetTimer();
                     }
                 }
                 break;
@@ -600,7 +502,7 @@ public class RedFar extends OpMode {
 
 
         follower = Constants.createFollower(hardwareMap);
-        paths = new Paths(follower);
+        paths = new BlueClosePaths(follower);
         follower.setStartingPose(startPose);
 
         leftLauncher = hardwareMap.get(DcMotorEx.class, "leftLauncher");
@@ -622,31 +524,21 @@ public class RedFar extends OpMode {
         intake = hardwareMap.get(DcMotor.class, "intake");
         intakeSelect = hardwareMap.get(Servo.class, "intakeSelect");
 
-        cameraServo = hardwareMap.get(Servo.class, "cameraServo");
-        cameraServo.setPosition(CAM_LEFT);
-
-        initAprilTag();
     }
 
     /** This method is called continuously after Init while waiting for "play". **/
     @Override
-    public void init_loop() {
-        updateAprilTag();
-
-        telemetry.addData("INIT Tag ID", detectedTagId);
-        telemetry.update();
-    }
-
+    public void init_loop() {}
 
     /** This method is called once at the start of the OpMode.
      * It runs all the setup actions, including building paths and starting the path system **/
     @Override
     public void start() {
         opmodeTimer.resetTimer();
-        configurePreloadSequence(detectedTagId);
-
-        setPathState(0);
+        actionTimer.resetTimer(); // reuse existing timer
+        setPathState(-1); // delay state
     }
+
 
     private void spinUpLaunchers() {
         double leftPower = leftLauncherPid.calculate(
@@ -661,48 +553,6 @@ public class RedFar extends OpMode {
         leftLauncher.setPower(leftPower);
         rightLauncher.setPower(rightPower);
     }
-
-    private void updateAprilTag() {
-        List<AprilTagDetection> detections = aprilTag.getDetections();
-
-        if (detections.isEmpty()) {
-            detectedTagId = -1;
-            return;
-        }
-
-        AprilTagDetection bestTag = null;
-
-        // Prefer the goal tag if present
-        for (AprilTagDetection tag : detections) {
-            if (tag.id == GOAL_TAG_ID) {
-                bestTag = tag;
-                break;
-            }
-        }
-
-        // Otherwise take the first tag
-        if (bestTag == null) {
-            bestTag = detections.get(0);
-        }
-
-        // === STORE THE ID ===
-        detectedTagId = bestTag.id;
-
-        // === OPTIONAL: camera servo aiming ===
-        double error = -bestTag.ftcPose.yaw;
-
-        if (Math.abs(error) < CAM_DEADBAND) {
-            error = 0;
-        }
-
-        double targetPos = CAM_CENTER + error * CAM_KP;
-        targetPos = Math.max(0.0, Math.min(1.0, targetPos));
-
-        telemetry.addData("Detected Tag ID", detectedTagId);
-        telemetry.addData("Tag Yaw", bestTag.ftcPose.yaw);
-    }
-
-
 
     private void stopLaunchers() {
 //        double leftPower = leftLauncherPid.calculate(
@@ -783,10 +633,5 @@ public class RedFar extends OpMode {
     }
     /** We do not use this because everything should automatically disable **/
     @Override
-    public void stop() {
-        if (visionPortal != null) {
-            visionPortal.close();
-        }
-    }
-
+    public void stop() {}
 }

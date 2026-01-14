@@ -44,10 +44,9 @@ public class TeleOpMode extends OpMode
     private final PIDController rightLauncherPid = new PIDController(0.06, 0, 0);
 
     // Launcher target velocity
-    private final double LAUNCHER_TARGET_VELOCITY = 1200; // Adjust this value
+    private final double LAUNCHER_TARGET_VELOCITY = 1200; // Adjust this value 1200
     private boolean launchersOn = false;
     private boolean autoCamera = false;
-
 
     // Hardware
     private DcMotor intake = null;
@@ -161,19 +160,19 @@ public class TeleOpMode extends OpMode
             double leftPower = leftLauncherPid.calculate(LAUNCHER_TARGET_VELOCITY, leftLauncher.getVelocity());
             double rightPower = rightLauncherPid.calculate(LAUNCHER_TARGET_VELOCITY, rightLauncher.getVelocity());
             leftLauncher.setPower(leftPower);
-//            rightLauncher.setPower(rightPower);
+            rightLauncher.setPower(rightPower);
         } else {
             leftLauncher.setPower(0.0);
-//            rightLauncher.setPower(0.0);
+            rightLauncher.setPower(0.0);
             leftLauncherPid.reset();
             rightLauncherPid.reset();
         }
 
         // Intake
         if (gamepad2.y) {
-            intake.setPower(-0.8);
+            intake.setPower(-1.0);
         } else if (gamepad2.x){
-            intake.setPower(0.8);
+            intake.setPower(1.0);
         } else {
             intake.setPower(0.0);
         }
