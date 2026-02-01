@@ -28,8 +28,8 @@ public class Paths {
 
         // ================= PRELOAD =================
         Shootpreload = follower.pathBuilder()
-                .addPath(new BezierLine(new Pose(116.549, 130.431), new Pose(107.765, 92.471)))
-                .setLinearHeadingInterpolation(Math.toRadians(216.3), Math.toRadians(45))
+                .addPath(new BezierLine(new Pose(115.5, 128.5), new Pose(107.765, 92.471)))
+                .setLinearHeadingInterpolation(Math.toRadians(90), Math.toRadians(45))
                 .setVelocityConstraint(FAST_TRAVEL)
                 .build();
 

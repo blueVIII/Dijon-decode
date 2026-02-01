@@ -44,7 +44,7 @@ public class TeleOpMode extends OpMode
     private final PIDController rightLauncherPid = new PIDController(0.06, 0, 0);
 
     // Launcher target velocity
-    private final double LAUNCHER_TARGET_VELOCITY = 1200; // Adjust this value 1200
+    private final double LAUNCHER_TARGET_VELOCITY = 1500; // Adjust this value 1200
     private boolean launchersOn = false;
     private boolean autoCamera = false;
 

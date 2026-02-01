@@ -5,13 +5,14 @@ import com.pedropathing.geometry.Pose;
 import com.pedropathing.paths.Path;
 import com.pedropathing.util.Timer;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
-import  com.qualcomm.robotcore.eventloop.opmode.OpMode;
+import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.hardware.CRServo;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.util.ElapsedTime;
 
+import org.firstinspires.ftc.robotcore.external.hardware.camera.controls.PtzControl;
 import org.firstinspires.ftc.teamcode.pedroPathing.Constants;
 import org.firstinspires.ftc.teamcode.pedroPathing.Paths;
 import org.firstinspires.ftc.teamcode.teleop.DriveTrain;
@@ -19,6 +20,8 @@ import org.firstinspires.ftc.teamcode.teleop.PIDController;
 
 import org.firstinspires.ftc.vision.VisionPortal;
 import org.firstinspires.ftc.vision.apriltag.AprilTagProcessor;
+import org.firstinspires.ftc.robotcore.external.hardware.camera.WebcamName;
+
 
 
 @Autonomous(name = "Red Close Auto", group = "Examples")
@@ -57,6 +60,8 @@ public class RedClose extends OpMode {
 
     private int pathState;
     private enum FeedSide { LEFT, RIGHT }
+    private int detectedTagId = -1;
+
 
     private final FeedSide[] preloadSequence = {
             FeedSide.LEFT,   // left chamber ball #1
@@ -85,7 +90,7 @@ public class RedClose extends OpMode {
     private static final int GOAL_TAG_ID = 24; // CHANGE to your actual goal tag ID
 
 
-    private final Pose startPose = new Pose(122.5, 128.5, Math.toRadians(230)); // Start Pose of our robot.
+    private final Pose startPose = new Pose(115.5, 128.5, Math.toRadians(90)); // Start Pose of our robot. 122.5, 128.5, Math.toRadians(230)
     private final Pose scorePose = new Pose(108, 108, Math.toRadians(45)); // Scoring Pose of our robot. It is facing the goal at a 135 degree angle.
 //    private final Pose pickup1Pose = new Pose(37, 121, Math.toRadians(0)); // Highest (First Set) of Artifacts from the Spike Mark.
 //    private final Pose pickup2Pose = new Pose(43, 130, Math.toRadians(0)); // Middle (Second Set) of Artifacts from the Spike Mark.
@@ -486,13 +491,34 @@ public class RedClose extends OpMode {
         telemetry.update();
     }
 
+    private void initAprilTag() {
+
+        aprilTag = new AprilTagProcessor.Builder()
+                .setDrawAxes(true)
+                .setDrawCubeProjection(true)
+                .setDrawTagOutline(true)
+                .build();
+
+        visionPortal = new VisionPortal.Builder()
+                .setCamera(hardwareMap.get(WebcamName.class, "Webcam 1")) // make sure name matches RC config
+                .addProcessor(aprilTag)
+                .build();
+
+        // PTZ is OPTIONAL and camera-dependent
+//        PtzControl ptzControl = visionPortal.getCameraControl(PtzControl.class);
+//        if (ptzControl != null) {
+//            ptzControl.setZoom(2);  // integer zoom
+//        }
+    }
+
+
+
     /** This method is called once at the init of the OpMode. **/
     @Override
     public void init() {
         pathTimer = new Timer();
         opmodeTimer = new Timer();
         opmodeTimer.resetTimer();
-
 
         follower = Constants.createFollower(hardwareMap);
         paths = new Paths(follower);
@@ -517,11 +543,31 @@ public class RedClose extends OpMode {
         intake = hardwareMap.get(DcMotor.class, "intake");
         intakeSelect = hardwareMap.get(Servo.class, "intakeSelect");
 
+        // ✅ AprilTag init
+        initAprilTag();
     }
+
 
     /** This method is called continuously after Init while waiting for "play". **/
     @Override
-    public void init_loop() {}
+    public void init_loop() {
+
+        if (aprilTag == null) {
+            telemetry.addLine("AprilTag not initialized");
+            telemetry.update();
+            return;
+        }
+
+        if (!aprilTag.getDetections().isEmpty()) {
+            detectedTagId = aprilTag.getDetections().get(0).id;
+            telemetry.addData("AprilTag ID", detectedTagId);
+        } else {
+            telemetry.addLine("No AprilTag detected");
+        }
+
+        telemetry.update();
+    }
+
 
     /** This method is called once at the start of the OpMode.
      * It runs all the setup actions, including building paths and starting the path system **/
