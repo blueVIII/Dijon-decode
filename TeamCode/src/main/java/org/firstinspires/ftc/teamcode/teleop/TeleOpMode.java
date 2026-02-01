@@ -35,6 +35,12 @@ public class TeleOpMode extends OpMode
     private static final double CAM_KP = 0.01;   // tune
     private static final double CAM_DEADBAND = 1.5; // degrees
 
+    // Light servo positions (TUNE THESE)
+    private static final double LIGHT_RED = 0.75;
+    private static final double LIGHT_YELLOW = 0.35;
+    private static final double LAUNCHER_TOLERANCE = 50;
+
+
 
     // Drivetrain
     private DriveTrain driveTrain;
@@ -87,6 +93,9 @@ public class TeleOpMode extends OpMode
         rightLauncher.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
 
         telemetry.addData("Status", "Initialized");
+        lightServo = hardwareMap.get(Servo.class, "lightServo");
+        lightServo.setPosition(LIGHT_YELLOW); // default on init
+
 
     }
 
@@ -99,6 +108,17 @@ public class TeleOpMode extends OpMode
         builder.addProcessor(aprilTag);
 
         visionPortal = builder.build();
+    }
+
+    private void updateLauncherLight() {
+        if (launchersOn &&
+                Math.abs(leftLauncher.getVelocity() - LAUNCHER_TARGET_VELOCITY) < LAUNCHER_TOLERANCE &&
+                Math.abs(rightLauncher.getVelocity() - LAUNCHER_TARGET_VELOCITY) < LAUNCHER_TOLERANCE) {
+
+            lightServo.setPosition(LIGHT_RED);     // at speed
+        } else {
+            lightServo.setPosition(LIGHT_YELLOW);  // not ready
+        }
     }
 
 
@@ -212,6 +232,7 @@ public class TeleOpMode extends OpMode
 
             telemetry.addData("Tag Yaw", tag.ftcPose.yaw);
         }
+        updateLauncherLight();
 
         telemetry.addData("Status", "Run Time: " + runtime.toString());
         telemetry.addData("Left Launcher Velocity", leftLauncher.getVelocity());
