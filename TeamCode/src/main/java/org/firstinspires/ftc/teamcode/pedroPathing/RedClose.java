@@ -54,6 +54,7 @@ public class RedClose extends OpMode {
     private CRServo rightLaunch = null;
     private CRServo leftLaunch = null;
     private Servo intakeSelect = null;
+    private Servo lightServo = null;
 
     private Follower follower;
     private Timer pathTimer, actionTimer, opmodeTimer;
@@ -78,6 +79,9 @@ public class RedClose extends OpMode {
     private static final double INTAKE_LEAD_TIME = 0.12; // tune (0.08–0.20)
     private static final double INTAKE_DRIVE_SCALE = 0.1; // 25% speed
     private static final double LOAD1_SERVO_SWITCH_TIME = 5.5; // tune (seconds)
+    // Light servo positions (TUNE THESE)
+    private static final double LIGHT_RED = 0.75;
+    private static final double LIGHT_YELLOW = 0.35;
     private boolean load1ServoSwitched = false;
     // AprilTag
     private VisionPortal visionPortal;
@@ -477,11 +481,11 @@ public class RedClose extends OpMode {
     @Override
     public void loop() {
 
-        // These loop the movements of the robot, these must be called continuously in order to work
         follower.update();
         autonomousPathUpdate();
 
-        // Feedback to Driver Hub for debugging
+        updateLauncherLight();
+
         telemetry.addData("path state", pathState);
         telemetry.addData("x", follower.getPose().getX());
         telemetry.addData("y", follower.getPose().getY());
@@ -529,6 +533,8 @@ public class RedClose extends OpMode {
 
         leftLaunch = hardwareMap.get(CRServo.class, "leftLaunch");
         rightLaunch = hardwareMap.get(CRServo.class, "rightLaunch");
+
+        lightServo = hardwareMap.get(Servo.class, "lightServo");
 
         leftLauncher.setDirection(DcMotor.Direction.REVERSE);
 
@@ -590,6 +596,15 @@ public class RedClose extends OpMode {
         leftLauncher.setPower(leftPower);
         rightLauncher.setPower(rightPower);
     }
+
+    private void updateLauncherLight() {
+        if (launchersAtSpeed(50)) {
+            lightServo.setPosition(LIGHT_RED);
+        } else {
+            lightServo.setPosition(LIGHT_YELLOW);
+        }
+    }
+
 
     private void stopLaunchers() {
 //        double leftPower = leftLauncherPid.calculate(

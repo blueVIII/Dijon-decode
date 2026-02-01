@@ -57,6 +57,7 @@ public class TeleOpMode extends OpMode
     private CRServo rightLaunch = null;
     private CRServo leftLaunch = null;
     private Servo intakeSelect = null;
+    private Servo lightServo = null;
 
 
     @Override
