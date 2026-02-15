@@ -41,7 +41,7 @@ public class RedClose extends OpMode {
     private PIDController rightLauncherPid = new PIDController(0.06, 0, 0);
 
     // Launcher target velocity
-    private final double LAUNCHER_TARGET_VELOCITY = 1200;
+    private final double LAUNCHER_TARGET_VELOCITY = 1100;
     // Adjust this value
     private final double LAUNCHER_STOP_VELOCITY = 0;
 
@@ -109,15 +109,15 @@ public class RedClose extends OpMode {
     private double atSpeedSince = -1;
 
     // Tag routines (same as Far timings)
-    private static final double TAG23_LEFT_TIME = 6.0;
-    private static final double TAG23_RIGHT_TIME = 5.0;
+    private static final double TAG23_LEFT_TIME = 1.5;
+    private static final double TAG23_RIGHT_TIME = 1.5;
 
-    private static final double TAG21_RIGHT_WITH_INTAKE_TIME = 4.0;
-    private static final double TAG21_LEFT_WITH_INTAKE_TIME = 6.0;
+    private static final double TAG21_RIGHT_WITH_INTAKE_TIME = 1.5;
+    private static final double TAG21_LEFT_WITH_INTAKE_TIME = 1.5;
 
     private static final double TAG22_LEFT_ONLY_TIME = 1.5;
-    private static final double TAG22_RIGHT_WITH_INTAKE_TIME = 2.0;
-    private static final double TAG22_LEFT_WITH_INTAKE_TIME = 2.0;
+    private static final double TAG22_RIGHT_WITH_INTAKE_TIME = 1.5;
+    private static final double TAG22_LEFT_WITH_INTAKE_TIME = 1.5;
 
     private final Pose startPose = new Pose(115.5, 128.5, Math.toRadians(90)); // Start Pose
     private final Pose scorePose = new Pose(108, 108, Math.toRadians(45));     // Score Pose
@@ -555,7 +555,7 @@ public class RedClose extends OpMode {
         if (lockedTagId == 23) {
             if (routineState == 1) {
                 feedRightOn();
-                intakeAssistOn();
+                // intakeAssistOn();
                 if (t >= TAG21_RIGHT_WITH_INTAKE_TIME) {
                     routineState = 2;
                     routineStartTime = getRuntime();

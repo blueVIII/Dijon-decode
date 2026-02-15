@@ -9,7 +9,7 @@ public class Paths {
 
     // ===== Speed constants (inches per second) =====
     private static final double FAST_TRAVEL = 60;
-    private static final double SLOW_INTAKE = 0.5;
+    private static final double SLOW_INTAKE = 4.0;
 
     public PathChain Shootpreload;
     public PathChain AlligntoLoadup1stset;
@@ -28,37 +28,37 @@ public class Paths {
 
         // ================= PRELOAD =================
         Shootpreload = follower.pathBuilder()
-                .addPath(new BezierLine(new Pose(115.5, 128.5), new Pose(107.765, 92.471)))
-                .setLinearHeadingInterpolation(Math.toRadians(90), Math.toRadians(45))
+                .addPath(new BezierLine(new Pose(115.5, 128.5), new Pose(102.765, 87.471)))
+                .setLinearHeadingInterpolation(Math.toRadians(90), Math.toRadians(51))
                 .setVelocityConstraint(FAST_TRAVEL)
                 .build();
 
         // ================= LOAD 1 =================
         AlligntoLoadup1stset = follower.pathBuilder()
-                .addPath(new BezierLine(new Pose(107.765, 92.471), new Pose(101.176, 80.765)))
-                .setLinearHeadingInterpolation(Math.toRadians(36.3), Math.toRadians(0))
+                .addPath(new BezierLine(new Pose(102.765, 87.471), new Pose(101.176, 78.765)))
+                .setLinearHeadingInterpolation(Math.toRadians(42.3), Math.toRadians(0))
                 .setVelocityConstraint(SLOW_INTAKE)
                 .build();
 
         Loadup1stset = follower.pathBuilder()
-                .addPath(new BezierLine(new Pose(101.176, 80.765), new Pose(123.882, 80.294)))
+                .addPath(new BezierLine(new Pose(101.176, 78.765), new Pose(114.882, 78.294)))
                 .setLinearHeadingInterpolation(0, 0)
                 .setVelocityConstraint(SLOW_INTAKE)
                 .build();
         Loadup1stsetBackup = follower.pathBuilder()
-                .addPath(new BezierLine(new Pose(122.882, 80.294), new Pose(119.882, 83.294)))
+                .addPath(new BezierLine(new Pose(114.882, 78.294), new Pose(113.882, 80.294)))
                 .setLinearHeadingInterpolation(0, 0)
                 .setVelocityConstraint(SLOW_INTAKE)
                 .build();
         Loadup1stset3rdBall = follower.pathBuilder()
-                .addPath(new BezierLine(new Pose(119.882, 83.294), new Pose(130.882, 83.294)))
+                .addPath(new BezierLine(new Pose(113.882, 80.294), new Pose(125.882, 80.294)))
                 .setLinearHeadingInterpolation(0, 0)
                 .setVelocityConstraint(SLOW_INTAKE)
                 .build();
 
 
         Shoot1stset = follower.pathBuilder()
-                .addPath(new BezierLine(new Pose(130.882, 83.294), new Pose(107.765, 97.471)))
+                .addPath(new BezierLine(new Pose(125.882, 80.2944), new Pose(102.765, 87.471)))
                 .setLinearHeadingInterpolation(Math.toRadians(0), Math.toRadians(50))
                 .setVelocityConstraint(FAST_TRAVEL)
                 .build();
